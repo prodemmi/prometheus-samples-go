@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 2s
+  evaluation_interval: 2s
+  external_labels:
+    cluster: "my-cluster"
+    prometheus: "prometheus-main"
+
+scrape_configs:
+  - job_name: "metric-app"
+    static_configs:
+      - targets:
+          - "metric-app:8085"
+
+# remote_write:
+#   - url: "http://thanos-sidecar:10901/api/v1/write"

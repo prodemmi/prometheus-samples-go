@@ -1,0 +1,112 @@
+version: "3.7"
+
+services:
+  metric-app:
+    build: ../metric-app
+    ports:
+      - 8085:8085
+    restart: no
+
+  prometheus:
+    image: quay.io/prometheus/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus-data:/var/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.min-block-duration=2h
+      - --storage.tsdb.max-block-duration=2h
+    depends_on:
+      - metric-app
+    networks:
+      - thanos-network
+
+  thanos-sidecar:
+    image: quay.io/thanos/thanos:v0.37.1
+    depends_on:
+      - minio
+    command:
+      - sidecar
+      - --tsdb.path=/var/prometheus
+      - --prometheus.url=http://prometheus:9090
+      - --objstore.config-file=/etc/thanos/bucket.yml
+    volumes:
+      - ./bucket.yml:/etc/thanos/bucket.yml
+    networks:
+      - thanos-network
+    ports:
+      - "10901:10901"
+      - "10902:10902"
+
+  thanos-store:
+    image: quay.io/thanos/thanos:v0.37.1
+    command:
+      - store
+      - --objstore.config-file=/etc/thanos/bucket.yml
+    volumes:
+      - ./bucket.yml:/etc/thanos/bucket.yml
+      - ./thanos-store-data:/data
+    networks:
+      - thanos-network
+    ports:
+      - "10903:10903"
+      - "10904:10904"
+
+  thanos-query:
+    image: quay.io/thanos/thanos:v0.37.1
+    command:
+      - query
+      - --http-address=0.0.0.0:10902
+      - --store=thanos-sidecar:10901
+      - --store=thanos-store:10903
+    volumes:
+      - ./bucket.yml:/etc/thanos/bucket.yml
+    networks:
+      - thanos-network
+    ports:
+      - "9091:10902"
+      - "9092:10901"
+
+  thanos-compactor:
+    image: quay.io/thanos/thanos:v0.37.1
+    command:
+      - compact
+      - --wait
+      - --http-address=0.0.0.0:10902
+      - --objstore.config-file=/etc/thanos/bucket.yml
+    volumes:
+      - ./bucket.yml:/etc/thanos/bucket.yml
+      - ./thanos-compactor-data:/data
+    networks:
+      - thanos-network
+    ports:
+      - "10905:19191"
+
+  minio:
+    image: minio/minio
+    ports:
+      - 9000:9000
+      - 9001:9001
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    volumes:
+      - /minio-data:/data
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    networks:
+      - thanos-network
+
+networks:
+  thanos-network:
+    driver: bridge
+
+volumes:
+  prometheus-data:
+    driver: local

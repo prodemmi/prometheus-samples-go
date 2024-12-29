@@ -1,0 +1,29 @@
+global:
+  scrape_interval: 2s
+  evaluation_interval: 3s
+  external_labels:
+    replica: A
+
+rule_files:
+  - rules.yml
+
+alerting:
+  alert_relabel_configs:
+    - action: drop
+      regex: replica
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+            
+scrape_configs:
+  - job_name: metric-app
+    static_configs:
+      - targets: ["metric-app:8085"]
+    metric_relabel_configs:
+      - source_labels:
+          - country
+        regex: Iran
+        target_label: country
+        action: replace
+        replacement: "Republic Islamic Iran"

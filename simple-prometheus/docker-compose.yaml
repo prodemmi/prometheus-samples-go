@@ -1,0 +1,20 @@
+version: "3.9"
+
+services:
+  metric-app:
+    build: ../metric-app
+    ports:
+      - 8085:8085
+    restart: no
+
+  prometheus:
+    image: quay.io/prometheus/prometheus
+    ports:
+      - 9090:9090
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./rules.yml:/etc/prometheus/rules.yml
+      # - ./prometheus:/prometheus
+
+volumes:
+  prometheus:

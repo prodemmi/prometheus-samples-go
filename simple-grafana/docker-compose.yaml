@@ -1,0 +1,33 @@
+version: "3.9"
+
+services:
+  metric-app:
+    build: ../metric-app
+    ports:
+      - 8085:8085
+    restart: no
+
+  prometheus:
+    image: quay.io/prometheus/prometheus
+    ports:
+      - 9090:9090
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./rules.yml:/etc/prometheus/rules.yml
+      # - ./prometheus:/prometheus
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - 3000:3000
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+    volumes:
+      - ./datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+      - grafana:/var/lib/grafana
+
+volumes:
+  grafana:
+  prometheus:

@@ -1,0 +1,83 @@
+version: "3.9"
+
+services:
+  metric-app:
+    build: ../metric-app
+    ports:
+      - 8085:8085
+    restart: no
+
+  prometheus:
+    image: quay.io/prometheus/prometheus
+    ports:
+      - 9090:9090
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./rules.yml:/etc/prometheus/rules.yml
+    networks:
+      - metrics
+    restart: always
+
+  alertmanager-1:
+    image: prom/alertmanager
+    ports:
+      - "9093:9093"
+      - "9094:9094"
+    volumes:
+      - "./alertmanager.yml:/etc/alertmanager/alertmanager.yml"
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--cluster.listen-address=0.0.0.0:9094"
+      - "--cluster.peer=alertmanager-2:9094"
+      - "--cluster.peer=alertmanager-3:9094"
+    networks:
+      - metrics
+    restart: always
+
+  alertmanager-2:
+    image: prom/alertmanager
+    ports:
+      - "9095:9093"
+      - "9096:9094"
+    volumes:
+      - "./alertmanager.yml:/etc/alertmanager/alertmanager.yml"
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--cluster.listen-address=0.0.0.0:9094"
+      - "--cluster.peer=alertmanager-1:9094"
+      - "--cluster.peer=alertmanager-3:9094"
+    networks:
+      - metrics
+    restart: always
+
+  alertmanager-3:
+    image: prom/alertmanager
+    ports:
+      - "9097:9093"
+      - "9098:9094"
+    volumes:
+      - "./alertmanager.yml:/etc/alertmanager/alertmanager.yml"
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--cluster.listen-address=0.0.0.0:9094"
+      - "--cluster.peer=alertmanager-1:9094"
+      - "--cluster.peer=alertmanager-2:9094"
+    networks:
+      - metrics
+    restart: always
+
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    networks:
+      - metrics
+    restart: always
+
+volumes:
+  prometheus:
+
+networks:
+  metrics:
+    driver: bridge

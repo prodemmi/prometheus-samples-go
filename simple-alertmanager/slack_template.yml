@@ -1,0 +1,25 @@
+{{ define "slack_alert_title" }}
+[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }} active alerts{{ end }}] 
+{{ .CommonLabels.alertname }} ({{ .GroupLabels.severity | toUpper }})
+{{ end }}
+
+{{ define "slack_alert_text" }}
+🚨 *Alert Summary* 🚨
+*Status:* {{ .Status | toUpper }}
+*Alert Name:* {{ .CommonLabels.alertname }}
+*Severity:* {{ .GroupLabels.severity }}
+*Triggered By:* {{ .CommonLabels.instance }}
+
+{{- range .Alerts }}
+---
+*Title:* {{ .Annotations.title }}
+*Description:* {{ .Annotations.description }}
+*Details:* 
+{{ range .Labels.SortedPairs }} • *{{ .Name }}:* `{{ .Value }}`
+{{ end }}
+{{ end }}
+
+{{- if eq .Status "resolved" }}
+✅ Resolved at: {{ .Alerts.ResolvedAt }}
+{{- end }}
+{{ end }}
